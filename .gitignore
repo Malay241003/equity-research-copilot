@@ -1,0 +1,62 @@
+# ─── Secrets ──────────────────────────────────────────────
+# NEVER commit real env files. .env.example is the template.
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─── Python ───────────────────────────────────────────────
+# Bytecode cache Python generates next to .py files.
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments (we'll use .venv via uv).
+.venv/
+venv/
+env/
+
+# Build artifacts / packaging.
+dist/
+build/
+*.egg-info/
+
+# Tool caches.
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ─── Node / Frontend ──────────────────────────────────────
+# Installed JS dependencies. Recreated by `npm install`.
+node_modules/
+
+# Vite build outputs.
+frontend/dist/
+.vite/
+
+# Logs.
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ─── Project-specific ─────────────────────────────────────
+# Local vector store + caches (regenerated on demand).
+chroma_db/
+.cache/
+backend/cache/
+
+# Eval run outputs.
+evals/results/
+
+# ─── OS junk ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── IDE / Editor ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
