@@ -44,11 +44,31 @@ pnpm-debug.log*
 # ─── Project-specific ─────────────────────────────────────
 # Local vector store + caches (regenerated on demand).
 chroma_db/
+.chroma/
 .cache/
 backend/cache/
+backend/data/
+backend/filings_cache/
 
 # Eval run outputs.
 evals/results/
+
+# Personal learning notes + active phase scratchpad — kept local only.
+studyMaterial/
+docs/
+
+# Block every .md file anywhere in the tree except the README files.
+# (README files are universally documentation; everything else is local-only.)
+*.md
+!README.md
+!**/README.md
+
+# Generic log files anywhere.
+*.log
+
+# Large data dumps that should never be committed.
+*.parquet
+*.feather
 
 # ─── OS junk ──────────────────────────────────────────────
 .DS_Store

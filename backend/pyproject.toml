@@ -1,11 +1,36 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Equity Research Copilot — FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.136.1",
+    "langchain-aws>=1.4.7",
     "pydantic-settings>=2.14.1",
     "uvicorn[standard]>=0.46.0",
 ]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes (unused imports, undefined names)
+    "I",    # isort (import ordering)
+    "B",    # flake8-bugbear (likely bugs)
+    "UP",   # pyupgrade (modernize syntax)
+    "N",    # pep8-naming
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line-too-long — formatter handles this
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
