@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import IngestSearchPanel from "./components/IngestSearchPanel";
 import "./App.css";
 
 interface BackendInfo {
@@ -82,9 +83,7 @@ function App() {
       }}
     >
       <h1>Equity Research Copilot</h1>
-      <p style={{ color: "#666" }}>
-        Phase 0 — backend connection + LLM smoke test
-      </p>
+      <p style={{ color: "#666" }}>Phase 1 — data layer + RAG smoke test</p>
 
       <section style={{ marginTop: "2rem" }}>
         <h2>Backend status</h2>
@@ -213,6 +212,8 @@ function App() {
           </div>
         )}
       </section>
+
+      <IngestSearchPanel />
     </main>
   );
 }

@@ -34,6 +34,21 @@ class Settings(BaseSettings):
     langsmith_api_key: str | None = None
     langsmith_project: str = "equity-research-copilot"
 
+    # ─── Embeddings (Phase 1) ────────────────────────────────────────
+    embedding_provider: str = "voyage"
+    voyage_api_key: str | None = None
+    voyage_embedding_model: str = "voyage-finance-2"
+
+    # ─── SEC EDGAR (Phase 1) ─────────────────────────────────────────
+    edgar_user_agent: str = "EquityResearchCopilot dev@example.com"
+
+    # ─── Chunker (Phase 1) ───────────────────────────────────────────
+    chunk_size: int = 800
+    chunk_overlap: int = 100
+
+    # ─── Chroma vector store (Phase 1) ───────────────────────────────
+    chroma_persist_dir: str = "./chroma_db"
+
     # ─── CORS ────────────────────────────────────────────────────────
     cors_origins: list[str] = ["http://localhost:5173"]
 
