@@ -38,6 +38,13 @@ _MAX_RATE_LIMIT_RETRIES: Final[int] = 4
 
 _client: voyageai.AsyncClient | None = None
 
+# In-process cache for query embeddings. Keyed by the raw query string.
+# Fixed prompts (like the analyzer SECTION_QUERIES) are identical across
+# every research run, so caching them dodges Voyage's 3 RPM free-tier
+# rate limit on warm runs. Lives for the process lifetime — uvicorn
+# --reload blows it on code change, which is the right behavior in dev.
+_query_embedding_cache: dict[str, list[float]] = {}
+
 
 def _get_client() -> voyageai.AsyncClient:
     """Lazily build (and cache) the Voyage async client with SDK retries OFF."""
@@ -159,8 +166,21 @@ async def embed_documents_stream(
 
 
 async def embed_query(query: str) -> list[float]:
-    """Embed a single search query."""
+    """Embed a single search query. Cached in-process.
+
+    Same query string → same embedding → call Voyage once per process
+    lifetime, then serve from memory. The 5 analyzer SECTION_QUERIES are
+    constants reused on every research run, so after warm-up they never
+    hit Voyage again and the 3-RPM free-tier rate limit stops dominating
+    wall time.
+    """
+    cached = _query_embedding_cache.get(query)
+    if cached is not None:
+        return cached
+
     all_vectors: list[list[float]] = []
     async for _, vectors in _embed_stream([query], input_type="query"):
         all_vectors.extend(vectors)
-    return all_vectors[0]
+    vector = all_vectors[0]
+    _query_embedding_cache[query] = vector
+    return vector

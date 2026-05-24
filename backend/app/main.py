@@ -11,6 +11,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.agents.graph import research_graph
+from app.agents.state import Report
 from app.config import settings
 from app.llm import LLMProviderError, get_fast_model, get_synthesis_model
 from app.rag.chunker import chunk_filing
@@ -232,3 +234,57 @@ async def search_ticker(
             for r in results
         ],
     )
+
+
+# ─── Phase 2: Research graph endpoint ────────────────────────────────
+
+
+class ResearchRequest(BaseModel):
+    """Optional body for /research/{ticker}.
+
+    Send `{}` for a general research run, or `{"query": "..."}` to focus
+    the planner on a specific question (e.g. "How exposed is AAPL to
+    China supply-chain risk?"). The query is plumbed into the planner's
+    `research_focus` and seen by every analyzer.
+    """
+
+    query: str | None = Field(
+        default=None,
+        description="Optional question to focus the research run. Plain prose.",
+    )
+
+
+@app.post("/research/{ticker}", response_model=Report)
+async def research_ticker(ticker: str, req: ResearchRequest) -> Report:
+    """Run the end-to-end research graph for a ticker.
+
+    Pipeline (see app/agents/graph.py for the topology):
+      planner → 3 parallel fetchers → indexer → 5 parallel analyzers → synthesizer
+
+    Latency: ~30–60s on a warm cache (filing already in Chroma). First-time
+    ingestion of a fresh ticker can take ~8min due to Voyage free-tier rate
+    limits — call POST /ingest/{ticker} first to warm the cache if needed.
+    """
+    ticker_u = _validate_ticker(ticker)
+
+    initial_state: dict = {"ticker": ticker_u, "query": req.query}
+
+    try:
+        final_state = await research_graph.ainvoke(initial_state)
+    except Exception as exc:  # noqa: BLE001 — surface the underlying error verbatim
+        raise HTTPException(
+            status_code=502,
+            detail=f"Research graph failed: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    report = final_state.get("report")
+    if report is None:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Graph completed but produced no report. Check server logs — "
+                "an analyzer or the synthesizer likely failed silently."
+            ),
+        )
+
+    return report

@@ -26,8 +26,11 @@ class Settings(BaseSettings):
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     aws_region: str = "us-east-1"
-    bedrock_model_id_synthesis: str = "anthropic.claude-sonnet-4-6"
-    bedrock_model_id_fast: str = "anthropic.claude-haiku-4-5-20251001-v1:0"
+    # Amazon Nova is the default — AWS-native, no Marketplace subscription
+    # required (unlike Anthropic Claude on Bedrock). Switch to other models
+    # by overriding these in .env.
+    bedrock_model_id_synthesis: str = "us.amazon.nova-pro-v1:0"
+    bedrock_model_id_fast: str = "us.amazon.nova-lite-v1:0"
 
     # ─── LangSmith tracing ───────────────────────────────────────────
     langchain_tracing_v2: bool = False
@@ -41,6 +44,11 @@ class Settings(BaseSettings):
 
     # ─── SEC EDGAR (Phase 1) ─────────────────────────────────────────
     edgar_user_agent: str = "EquityResearchCopilot dev@example.com"
+
+    # ─── News (Phase 2) ──────────────────────────────────────────────
+    # NewsAPI replaces the yfinance news widget for analyzer consumption.
+    # Free tier: 100 requests/day, dev-only, 24h delay on results.
+    newsapi_key: str | None = None
 
     # ─── Chunker (Phase 1) ───────────────────────────────────────────
     chunk_size: int = 800

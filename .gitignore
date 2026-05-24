@@ -53,15 +53,20 @@ backend/filings_cache/
 # Eval run outputs.
 evals/results/
 
+# Local smoke-test scripts (handy to keep around, not project code).
+backend/smoke_test.py
+
 # Personal learning notes + active phase scratchpad — kept local only.
 studyMaterial/
 docs/
 
-# Block every .md file anywhere in the tree except the README files.
-# (README files are universally documentation; everything else is local-only.)
+# Block every .md file anywhere in the tree except the README files
+# and the prompt templates (application code, loaded at runtime by
+# load_prompt() — a fresh clone can't run the graph without them).
 *.md
 !README.md
 !**/README.md
+!backend/app/prompts/**/*.md
 
 # Generic log files anywhere.
 *.log
