@@ -22,6 +22,10 @@ the `source_id` of your Citation.
 
 {price_block}
 
+### Recent earnings history (last 4 quarters)
+
+{earnings_block}
+
 ### Recent news
 
 {news_block}
@@ -37,6 +41,13 @@ Assess **financial health**, covering:
 - Profitability (margins, returns)
 - Balance sheet strength (debt, liquidity, cash position)
 - Cash-flow quality (recurring vs. one-off, free cash flow)
+- **Earnings trajectory and beat/miss track record** — read the
+  Recent earnings history block. Are the last 4 quarters a string of
+  beats, a string of misses, or mixed? Are the surprise percentages
+  shrinking (deceleration) or expanding? Cite each
+  `[{ticker}_earnings_<quarter>]` ID when you reference a number, and
+  cite `[{ticker}_earnings_next]` for the upcoming earnings date if
+  relevant ("next print expected on X is the immediate catalyst").
 - Any near-term financial flags (covenant pressure, going-concern language)
 
 Produce a `SectionOutput` with these fields:

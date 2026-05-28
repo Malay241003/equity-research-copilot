@@ -22,6 +22,10 @@ the `source_id` of your Citation.
 
 {price_block}
 
+### Recent earnings history (last 4 quarters)
+
+{earnings_block}
+
 ### Recent news
 
 {news_block}
@@ -37,6 +41,12 @@ Assess **growth**, covering:
 - Top-line revenue trajectory and what's driving it (organic vs. acquisition, segment mix)
 - Total addressable market signals from the filings
 - New products / new geographies / new customer segments referenced
+- **EPS growth trajectory and earnings momentum** — read the Recent
+  earnings history block. Are EPS numbers growing across the last
+  4 quarters? Are surprise percentages widening (accelerating beats) or
+  narrowing (growth fading)? A run of accelerating beats is a strong
+  growth signal; a run of shrinking beats is a deceleration warning.
+  Cite each `[{ticker}_earnings_<quarter>]` ID when you reference a number.
 - Any explicit growth headwinds (saturation, competitive pressure on a key segment)
 
 Produce a `SectionOutput` with these fields:

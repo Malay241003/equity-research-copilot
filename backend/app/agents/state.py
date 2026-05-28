@@ -26,11 +26,18 @@ from pydantic import BaseModel, Field
 # Using Literal gives us autocomplete + mypy errors if a typo creeps in.
 
 SectionName = Literal[
+    # Original 5 (Phase 2)
     "financial_health",
     "growth",
     "risks",
     "competition",
     "valuation",
+    # Phase 3.5 additions — cover the gaps where the original 5 punted to
+    # "look elsewhere": macro tailwinds/headwinds, market sentiment +
+    # technical momentum, recent material catalysts.
+    "macro_context",
+    "sentiment_momentum",
+    "catalysts",
 ]
 
 ALL_SECTIONS: tuple[SectionName, ...] = (
@@ -39,6 +46,9 @@ ALL_SECTIONS: tuple[SectionName, ...] = (
     "risks",
     "competition",
     "valuation",
+    "macro_context",
+    "sentiment_momentum",
+    "catalysts",
 )
 
 
@@ -129,6 +139,14 @@ class Report(BaseModel):
             "Educational only — not advice."
         ),
     )
+    cost_usd: float = Field(
+        default=0.0,
+        description=(
+            "Estimated LLM cost for this run, USD. Sum of input+output token "
+            "spend across planner + 5 analyzers + synthesizer. Phase 3 preview; "
+            "the full cost dashboard lands in Phase 6."
+        ),
+    )
 
 
 class Message(BaseModel):
@@ -167,6 +185,11 @@ class AgentState(TypedDict, total=False):
     raw_fundamentals: dict | None
     raw_filings: list[dict]
     raw_news: list[dict]
+    # Added with ATR/VIX/earnings enrichment — populated by fetch_yfinance
+    # alongside price_history + fundamentals (single yfinance node owns
+    # all the market-data fetches).
+    raw_vix: dict | None
+    raw_earnings: dict | None
 
     # Filled in by the indexer. List of accession numbers actually ingested
     # this run (vs. already-cached). Pure bookkeeping for the trace.
@@ -182,8 +205,11 @@ class AgentState(TypedDict, total=False):
     # Filled in by the synthesizer.
     report: Report | None
 
-    # Bookkeeping for tracing and cost-tracking (Phase 6).
-    cost_usd: float
+    # Per-node LLM costs accumulate here. The `operator.add` reducer is
+    # mandatory — parallel branches (5 analyzers) all write to this field,
+    # and without a reducer the later-finishing branch would clobber the
+    # earlier ones' spend.
+    cost_usd: Annotated[float, operator.add]
     trace_id: str | None
 
     # Reserved for Phase 3+ follow-up chat.

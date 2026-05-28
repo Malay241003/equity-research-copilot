@@ -13,6 +13,7 @@ invalid JSON, Pydantic raises a `ValidationError` here — caught upstream
 by the graph runner.
 """
 
+from app.agents.cost import estimate_llm_cost
 from app.agents.prompts import load_prompt
 from app.agents.state import ALL_SECTIONS, AgentState, Plan
 from app.llm import get_fast_model
@@ -29,8 +30,14 @@ async def planner(state: AgentState) -> dict:
 
     prompt_text = load_prompt("planner").format(ticker=ticker, query=query)
 
-    model = get_fast_model().with_structured_output(Plan)
-    plan: Plan = await model.ainvoke(prompt_text)
+    # `include_raw=True` makes structured output also return the raw AIMessage
+    # so we can capture usage_metadata for cost tracking. Without this the
+    # parsed Pydantic object comes back alone and the token counts are lost.
+    model = get_fast_model().with_structured_output(Plan, include_raw=True)
+    response = await model.ainvoke(prompt_text)
+    plan: Plan = response["parsed"]
+    raw = response["raw"]
+    cost = estimate_llm_cost("fast", getattr(raw, "usage_metadata", None))
 
     # Trust-but-verify: the LLM produced the Plan, but we own a few invariants.
     # - `ticker` must match the input exactly (defense against typos / spelling fixes).
@@ -43,4 +50,4 @@ async def planner(state: AgentState) -> dict:
         }
     )
 
-    return {"plan": plan}
+    return {"plan": plan, "cost_usd": cost}

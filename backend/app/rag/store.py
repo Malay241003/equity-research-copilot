@@ -50,6 +50,27 @@ def _chunk_id(chunk: Chunk) -> str:
     return f"{chunk.ticker}_{chunk.accession_number}_{chunk.item_number}_{chunk.chunk_index}"
 
 
+async def get_chunk_by_id(chunk_id: str) -> dict | None:
+    """Look up a single chunk in Chroma by its deterministic ID.
+
+    Returns `{"id", "text", "metadata"}` if found, else None.
+
+    Used by the citation-detail endpoint: when the user clicks a `[chunk_id]`
+    badge in the UI, we re-fetch the chunk to show the full text + filing
+    metadata in a side panel (the inline `quote` on the SectionOutput is a
+    snippet, not the full chunk).
+    """
+    collection = _get_collection()
+    result = await asyncio.to_thread(collection.get, ids=[chunk_id])
+    if not result["ids"]:
+        return None
+    return {
+        "id": result["ids"][0],
+        "text": result["documents"][0],
+        "metadata": dict(result["metadatas"][0]),
+    }
+
+
 async def is_filing_ingested(content_hash: str) -> bool:
     """Check whether any chunk with this content_hash already exists."""
     collection = _get_collection()

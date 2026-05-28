@@ -24,7 +24,12 @@ import asyncio
 from app.agents.state import AgentState
 from app.tools.edgar import list_filings
 from app.tools.newsapi import NewsAPIError, get_news
-from app.tools.yfinance_tool import get_fundamentals, get_price_history
+from app.tools.yfinance_tool import (
+    get_earnings_history,
+    get_fundamentals,
+    get_price_history,
+    get_vix,
+)
 
 
 async def fetch_yfinance(state: AgentState) -> dict:
@@ -36,22 +41,32 @@ async def fetch_yfinance(state: AgentState) -> dict:
     ticker = state["ticker"]
 
     try:
-        # asyncio.gather runs both coroutines concurrently and waits for both.
-        # yfinance is scrapy-style sync inside, but each call is wrapped in
-        # asyncio.to_thread, so they really do go in parallel on worker threads.
-        price, fundamentals = await asyncio.gather(
+        # asyncio.gather runs all four coroutines concurrently. Each is sync
+        # inside yfinance, but each call is wrapped in asyncio.to_thread, so
+        # they really do go in parallel on worker threads. VIX is fetched
+        # once per run (it's market-wide); earnings is per-ticker.
+        price, fundamentals, vix, earnings = await asyncio.gather(
             get_price_history(ticker, period="1y"),
             get_fundamentals(ticker),
+            get_vix(),
+            get_earnings_history(ticker),
         )
     except Exception as exc:  # noqa: BLE001 — yfinance can throw arbitrary errors
         print(f"  [fetch_yfinance] failed: {type(exc).__name__}: {exc}", flush=True)
-        return {"raw_price_history": None, "raw_fundamentals": None}
+        return {
+            "raw_price_history": None,
+            "raw_fundamentals": None,
+            "raw_vix": None,
+            "raw_earnings": None,
+        }
 
     update: dict = {
         # mode="json" so date objects serialize to ISO strings — survive
         # LangGraph's state checkpointing without custom encoders.
         "raw_price_history": price.model_dump(mode="json"),
         "raw_fundamentals": fundamentals.model_dump(mode="json"),
+        "raw_vix": vix.model_dump(mode="json") if vix is not None else None,
+        "raw_earnings": earnings.model_dump(mode="json"),
     }
 
     # Backfill company_name on the Plan if we just learned it. Pydantic

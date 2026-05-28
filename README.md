@@ -2,7 +2,8 @@
 
 > An agentic AI system that performs equity research on publicly traded
 > companies. Enter a ticker, get a structured research report (financial
-> health, growth, risks, competition, valuation) with cited sources, then chat
+> health, growth, risks, competition, valuation, macro context, sentiment
+> & momentum, recent catalysts) streamed live with cited sources, then chat
 > with the system for grounded follow-ups.
 
 > **Educational and research tool, NOT financial advice.** This is a
@@ -12,22 +13,34 @@
 
 ## Status
 
-In active development. Phase 1 complete (2026-05-21); currently in
-Phase 2 of 7 (Core Agent Loop with LangGraph).
+In active development. Phases 0–3 complete; currently entering
+**Phase 4 of 7 (Evaluation Framework)**.
 
 Working today:
 
-- FastAPI backend, React frontend, AWS Bedrock (Claude Sonnet/Haiku) LLM
-  calls, LangSmith tracing
+- FastAPI backend, React + Tailwind + shadcn/ui frontend, AWS Bedrock
+  (Amazon Nova Pro / Lite) LLM calls, LangSmith tracing.
 - End-to-end RAG pipeline: SEC EDGAR client, 10-K parser, section-aware
-  chunker, Voyage `voyage-finance-2` embeddings, Chroma vector store
-- HTTP endpoints: `POST /ingest/{ticker}` and `GET /search/{ticker}?q=...`
-  with idempotency (re-ingesting the same filing is a no-op)
-- yfinance wrapper for prices, fundamentals, and news (with TTL caches)
-- Frontend Ingest + Search demo panel at `http://localhost:5173`
-- Voyage free-tier rate-limit handling: token-aware batching, inter-batch
-  sleeps, retry on rate-limit and network errors, per-batch commit to Chroma so
-  partial failures do not lose work
+  chunker, Voyage `voyage-finance-2` embeddings, Chroma vector store.
+- **LangGraph agent**: planner → 3 parallel fetchers → indexer → 8
+  parallel analyzers → synthesizer. Eight sections: financial health,
+  growth, risks, competition, valuation, macro context, sentiment &
+  momentum, catalysts.
+- **Streaming UI** via Server-Sent Events. Section cards reveal as
+  analyzers complete; synthesizer headline + bottom line type out
+  token-by-token; cost-per-report badge in the header.
+- **Computed technical indicators** (MA20/50/200, ATR, momentum) from
+  the price history, plus VIX, and the last 4 quarters of earnings
+  beats/misses wired into the relevant analyzers.
+- **Citation popovers** — clicking a metric badge shows a plain-English
+  definition, interpretation thresholds, and (for live metrics like
+  VIX) the current value with as-of timestamp.
+- **Follow-up chat** grounded in the generated report.
+- HTTP endpoints (see [`backend/CLAUDE.md`](./backend/CLAUDE.md) for
+  the full table): `/health`, `/info`, `/generate`, `/ingest/{ticker}`,
+  `/search/{ticker}`, `/research/{ticker}`,
+  `/research/{ticker}/stream`, `/citation/{source_id}`,
+  `/price/{ticker}`, `/chat/{ticker}`.
 
 ## Tech stack
 
@@ -35,10 +48,11 @@ Working today:
 | --------------- | ------------------------------------------------------------------- |
 | Backend         | FastAPI on Python 3.13, deps via [`uv`](https://docs.astral.sh/uv/) |
 | Agent framework | [LangGraph](https://langchain-ai.github.io/langgraph/)              |
-| Primary LLM     | Anthropic Claude via AWS Bedrock                                    |
-| Vector DB       | [Chroma](https://docs.trychroma.com/) (added Phase 1)               |
-| Embeddings      | Voyage `voyage-finance-2` / OpenAI fallback (Phase 1)               |
-| Frontend        | React + Vite + TypeScript                                           |
+| Primary LLM     | Amazon Nova Pro / Lite via AWS Bedrock                              |
+| Vector DB       | [Chroma](https://docs.trychroma.com/)                               |
+| Embeddings      | Voyage `voyage-finance-2`                                           |
+| Frontend        | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + Recharts   |
+| Streaming       | Server-Sent Events (SSE)                                            |
 | Tracing         | [LangSmith](https://smith.langchain.com/)                           |
 | Deploy          | Docker + Railway (Phase 6)                                          |
 
@@ -100,33 +114,61 @@ npm install
 npm run dev
 ```
 
-UI runs on **http://localhost:5173**. Open it and you should see three
-panels: backend status, LLM smoke test, and the Ingest + Search demo
-(enter a ticker, click Ingest, then run a vector search).
+UI runs on **http://localhost:5173**. Enter an S&P 500 ticker (try AAPL,
+NVDA, MSFT) and watch the report stream in.
 
-> First-time ingest of a new ticker takes about 8 minutes on Voyage's free tier
-> due to its 3 RPM / 10K TPM rate limit. Idempotent re-runs are instant.
+> First-time ingest of a new ticker takes ~8 minutes on Voyage's free
+> tier due to its 3 RPM / 10K TPM rate limit. Idempotent re-runs are
+> instant. Subsequent research runs on the same ticker take ~25 s
+> (filings already in Chroma; only LLM calls).
 
 ## Project layout
 
 ```
 equity-research-copilot/
 ├── README.md
-├── backend/                 # FastAPI + Python 3.13 (uv)
-│   ├── app/
-│   │   ├── main.py          # routes (health, /info, /generate, /ingest, /search)
-│   │   ├── config.py        # typed settings (pydantic-settings)
-│   │   ├── llm.py           # LLM provider abstraction (Bedrock)
-│   │   ├── tools/           # EDGAR, yfinance, news clients (Phase 1)
-│   │   └── rag/             # parser, chunker, embeddings, Chroma store (Phase 1)
-│   └── pyproject.toml
-├── frontend/                # React + Vite + TypeScript
-│   ├── src/
-│   │   ├── App.tsx
-│   │   └── components/      # IngestSearchPanel.tsx (Phase 1)
-│   └── package.json
-├── evals/                   # gold-standard test set + runner (Phase 4)
-└── infra/                   # deployment configs (Phase 6)
+├── ARCHITECTURE.md           # 8-week build plan + design principles
+├── CLAUDE.md                 # Active-phase context for Claude
+├── docs/
+│   └── PHASE_NOTES.md        # Live notes for the current phase
+├── studyMaterial/            # Per-phase concept/learning notes
+│   ├── README.md
+│   └── phase3.md
+├── backend/                  # FastAPI + Python 3.13 (uv)
+│   ├── CLAUDE.md             # Backend-scoped context
+│   ├── pyproject.toml
+│   └── app/
+│       ├── main.py           # all HTTP routes
+│       ├── config.py         # typed settings (pydantic-settings)
+│       ├── llm.py            # Bedrock provider abstraction
+│       ├── citation_definitions.py  # metric definitions + thresholds
+│       ├── agents/
+│       │   ├── state.py      # AgentState (TypedDict) + Plan/Report/Citation
+│       │   ├── graph.py      # StateGraph wiring; exports research_graph
+│       │   ├── streaming.py  # SSE event translator
+│       │   ├── cost.py       # per-call $ estimation
+│       │   ├── prompts.py    # load_prompt() helper
+│       │   └── nodes/        # planner, fetchers, indexer, analyzers, synthesizer
+│       ├── tools/            # EDGAR, yfinance, newsapi, technicals
+│       ├── rag/              # parser, chunker, embeddings, Chroma store
+│       └── prompts/          # .md prompt templates (incl. 8 analyzer prompts)
+├── frontend/                 # React 19 + Vite + TypeScript + Tailwind + shadcn
+│   ├── CLAUDE.md             # Frontend-scoped context
+│   ├── components.json       # shadcn CLI config
+│   └── src/
+│       ├── App.tsx           # idle hero → TickerInput → ReportView
+│       ├── index.css         # Tailwind + shadcn theme tokens
+│       ├── components/
+│       │   ├── TickerInput.tsx
+│       │   ├── ReportView.tsx          # SSE consumer, sections, headline streaming
+│       │   ├── CitationSheet.tsx       # source-detail side panel
+│       │   ├── PriceChart.tsx          # Recharts area chart with period switch
+│       │   ├── ChatPanel.tsx           # follow-up Q&A
+│       │   └── ui/                     # shadcn primitives (10 components)
+│       ├── lib/                        # api.ts (typed fetch helpers), utils.ts (cn)
+│       └── data/sp500.json             # autocomplete list
+├── evals/                    # gold-standard test set + runner (Phase 4)
+└── infra/                    # deployment configs (Phase 6)
 ```
 
 ## Development workflow
